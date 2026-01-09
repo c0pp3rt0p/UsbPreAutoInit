@@ -1,0 +1,187 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    name: Build, Sign, Notarize, and Release
+    runs-on: macos-13
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.0'
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+        run: |
+          # Decode certificate
+          echo "$CERTIFICATE_P12" | base64 --decode > certificate.p12
+
+          # Create temporary keychain
+          security create-keychain -p actions temp.keychain
+          security default-keychain -s temp.keychain
+          security unlock-keychain -p actions temp.keychain
+          security set-keychain-settings -t 3600 -u temp.keychain
+
+          # Import certificate
+          security import certificate.p12 \
+            -k temp.keychain \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productsign
+
+          # Allow codesign to access keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions temp.keychain
+
+          # Verify identity is available
+          security find-identity -v -p codesigning temp.keychain
+
+          # Clean up certificate file
+          rm certificate.p12
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          # Remove 'v' prefix from tag (v1.0.0 -> 1.0.0)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+          # Update VERSION file if needed
+          echo "$VERSION" > VERSION
+
+      - name: Build, sign, and notarize
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        run: |
+          # Run full pipeline except GitHub release (we'll do that separately)
+          ./Scripts/pipeline.sh --stop-at=9
+
+      - name: Verify artifacts
+        run: |
+          echo "Verifying build artifacts..."
+          ls -lh build/
+
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+
+          # Check PKG
+          PKG_FILE="build/USBPreAutoInit-${VERSION}.pkg"
+          if [ ! -f "$PKG_FILE" ]; then
+            echo "ERROR: PKG not found: $PKG_FILE"
+            exit 1
+          fi
+
+          # Check DMG
+          DMG_FILE="build/USBPreAutoInit-${VERSION}.dmg"
+          if [ ! -f "$DMG_FILE" ]; then
+            echo "ERROR: DMG not found: $DMG_FILE"
+            exit 1
+          fi
+
+          # Verify PKG signature
+          pkgutil --check-signature "$PKG_FILE"
+
+          # Verify notarization staple
+          stapler validate "$PKG_FILE" || echo "WARNING: Notarization staple not found"
+
+          echo "All artifacts verified!"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+
+          cat << EOF > release_notes.md
+          ## USBPre Auto-Init v${VERSION}
+
+          ### Installation
+
+          **Recommended:** Download \`USBPreAutoInit-${VERSION}.pkg\` and run the installer.
+
+          **Alternative:** Download \`USBPreAutoInit-${VERSION}.dmg\`, mount it, and run the installer inside.
+
+          ### Requirements
+
+          - macOS 11.0 (Big Sur) or later
+          - Sound Devices USBPre (VID: 0x0926, PID: 0x0100)
+          - Administrator privileges
+
+          ### What's New
+
+          See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
+
+          ### Verification
+
+          All artifacts are signed with Developer ID and notarized by Apple.
+
+          **PKG Signature:**
+          \`\`\`
+          $(pkgutil --check-signature "build/USBPreAutoInit-${VERSION}.pkg" 2>&1)
+          \`\`\`
+
+          ### Support
+
+          - [Documentation](https://github.com/${{ github.repository }})
+          - [Report Issues](https://github.com/${{ github.repository }}/issues)
+
+          ---
+
+          Built with GitHub Actions on macOS 13
+          EOF
+
+          echo "Release notes generated"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/USBPreAutoInit-${{ steps.get_version.outputs.VERSION }}.pkg
+            build/USBPreAutoInit-${{ steps.get_version.outputs.VERSION }}.dmg
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifacts (backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.get_version.outputs.VERSION }}
+          path: |
+            build/USBPreAutoInit-${{ steps.get_version.outputs.VERSION }}.pkg
+            build/USBPreAutoInit-${{ steps.get_version.outputs.VERSION }}.dmg
+          retention-days: 90
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain temp.keychain || true
+
+      - name: Build logs
+        if: failure()
+        run: |
+          echo "Build failed! Dumping logs..."
+          for log in build/logs/*.log; do
+            if [ -f "$log" ]; then
+              echo "=== $log ==="
+              cat "$log"
+              echo ""
+            fi
+          done

@@ -1,0 +1,33 @@
+# Build artifacts
+build/
+*.o
+*.pkg
+*.dmg
+DerivedData/
+
+# CLI tool (if built in source directory)
+Source/cli/usbpre_init
+
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Secrets (never commit)
+.env
+LOCAL_SETUP.md
+*.p12
+*.provisionprofile
+signing-config.sh
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

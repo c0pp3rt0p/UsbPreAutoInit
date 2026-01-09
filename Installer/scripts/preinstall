@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+# Pre-installation script
+# Stops existing daemon if running
+#
+
+PLIST_PATH="/Library/LaunchDaemons/com.sounddevices.usbpre.monitor.plist"
+
+# Stop existing daemon if present
+if [ -f "$PLIST_PATH" ]; then
+    /bin/launchctl unload "$PLIST_PATH" 2>/dev/null || true
+fi
+
+exit 0

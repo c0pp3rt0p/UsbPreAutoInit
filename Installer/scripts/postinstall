@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# Post-installation script
+# Sets permissions and starts the daemon
+#
+
+DAEMON_PATH="/usr/local/bin/usbpre_monitor_daemon"
+PLIST_PATH="/Library/LaunchDaemons/com.sounddevices.usbpre.monitor.plist"
+
+# Set ownership and permissions
+chown root:wheel "$DAEMON_PATH"
+chmod 755 "$DAEMON_PATH"
+
+chown root:wheel "$PLIST_PATH"
+chmod 644 "$PLIST_PATH"
+
+# Load and start the daemon
+/bin/launchctl load "$PLIST_PATH"
+
+exit 0

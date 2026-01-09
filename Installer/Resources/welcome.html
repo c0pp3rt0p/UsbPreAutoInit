@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .important {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to USBPre Auto-Init</h1>
+
+    <p>This installer will set up automatic initialization for your Sound Devices USBPre audio interface on modern macOS.</p>
+
+    <h2>What will be installed:</h2>
+    <ul>
+        <li>Background monitoring daemon</li>
+        <li>Launch configuration (starts at boot)</li>
+        <li>Uninstaller app (in Applications/Utilities)</li>
+    </ul>
+
+    <h2>How it works:</h2>
+    <p>A small background service monitors for your USBPre device. When detected, it automatically sends the initialization sequence that enables full functionality.</p>
+
+    <div class="important">
+        <strong>Note:</strong> After installation, simply plug in your USBPre—no manual steps required!
+    </div>
+
+    <h2>Requirements:</h2>
+    <ul>
+        <li>macOS 11.0 (Big Sur) or later</li>
+        <li>Sound Devices USBPre (VID: 0x0926, PID: 0x0100)</li>
+        <li>Administrator privileges (you'll be prompted for your password)</li>
+    </ul>
+</body>
+</html>

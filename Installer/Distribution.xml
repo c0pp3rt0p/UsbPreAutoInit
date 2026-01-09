@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>USBPre Auto-Init</title>
+    <welcome file="welcome.html"/>
+    <conclusion file="conclusion.html"/>
+    <pkg-ref id="com.sounddevices.usbpre.monitor"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true" hostArchitectures="x86_64,arm64"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.sounddevices.usbpre.monitor"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.sounddevices.usbpre.monitor" visible="false">
+        <pkg-ref id="com.sounddevices.usbpre.monitor"/>
+    </choice>
+    <pkg-ref id="com.sounddevices.usbpre.monitor" version="1.0.0" onConclusion="none">usbpre-component.pkg</pkg-ref>
+</installer-gui-script>
